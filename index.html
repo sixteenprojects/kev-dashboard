@@ -359,7 +359,7 @@
     .tabulator .tabulator-header { background: rgba(255,255,255,.03) !important; border-bottom: 1px solid var(--border) !important; }
     .tabulator .tabulator-col { background: transparent !important; border-right: 1px solid var(--border) !important; }
     .tabulator .tabulator-col-title { font-size: 10px; font-weight: 600; letter-spacing: .08em; color: var(--t2); text-transform: uppercase; font-family: var(--fn-d); }
-    .tabulator .tabulator-row { background: var(--bg-card) !important; border-bottom: 1px solid var(--border) !important; transition: background .12s; }
+    .tabulator .tabulator-row { background: var(--bg-card) !important; border-bottom: 1px solid var(--border) !important; transition: background .12s; height: auto !important; }
     .tabulator .tabulator-row:hover { background: var(--bg-hover) !important; }
     .tabulator .tabulator-row-odd { background: rgba(255,255,255,.015) !important; }
     .tabulator .tabulator-cell { color: var(--t1); border-right: 1px solid var(--border) !important; height: auto !important; min-height: 36px; font-size: 12px; padding: 8px 10px; vertical-align: top; }
@@ -1010,14 +1010,11 @@ function initTable() {
       { title:'CWE', field:'cwes', width:170,
         formatter: cell => { const cwes=cell.getValue(); if(!cwes||!cwes.length) return '<span style="color:#334155;">—</span>'; return cwes.map(cwe=>`<a href="https://cwe.mitre.org/data/definitions/${cwe.replace('CWE-','')}.html" target="_blank" style="color:${C_BLUE};font-size:11px;margin-right:4px;font-family:'JetBrains Mono',monospace;">${cwe}</a>`).join(''); }
       },
-      { title:'Threat Actors', field:'threatActors', minWidth:220, maxWidth:380,
+      { title:'Threat Actors', field:'threatActors', minWidth:220, maxWidth:420,
         headerTooltip: 'Known threat actors exploiting this CVE (source: MITRE ATT&CK)',
         formatter: cell => {
           const actors=cell.getValue(); if(!actors||!actors.length) return '<span style="color:#334155;">—</span>';
-          const MAX=4, visible=actors.slice(0,MAX), overflow=actors.slice(MAX);
-          let html=visible.map(a=>`<a class="actor-badge" href="${a.url}" target="_blank" title="${a.name} (${a.id})">${a.name}</a>`).join('');
-          if(overflow.length) html+=`<span class="actor-overflow" title="${overflow.map(a=>`${a.name} (${a.id})`).join('\n')}">+${overflow.length} more</span>`;
-          return html;
+          return actors.map(a=>`<a class="actor-badge" href="${a.url}" target="_blank" title="${a.name} (${a.id})">${a.name}</a>`).join('');
         },
         sorter: (a,b) => (a||[]).length-(b||[]).length
       },
