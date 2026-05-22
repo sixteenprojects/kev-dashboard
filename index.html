@@ -322,6 +322,27 @@
     .sev-NA       { background:rgba(100,116,139,.1); color:#64748b; border:1px solid rgba(100,116,139,.2); }
     .ran-known    { background:rgba(168,85,247,.14); color:#a855f7; border:1px solid rgba(168,85,247,.3);  padding:2px 8px; border-radius:3px; font-size:10px; font-weight:600; font-family:var(--fn-m); }
     .ran-unknown  { background:rgba(100,116,139,.08); color:#475569; border:1px solid rgba(100,116,139,.15); padding:2px 8px; border-radius:3px; font-size:10px; font-family:var(--fn-m); }
+    .actor-badge  {
+      display: inline-block;
+      background: rgba(34,211,238,.1);
+      color: var(--cyan);
+      border: 1px solid rgba(34,211,238,.28);
+      border-radius: 3px;
+      padding: 1px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--fn-m);
+      text-decoration: none;
+      margin: 1px 2px 1px 0;
+      white-space: nowrap;
+      transition: background .15s, box-shadow .15s;
+    }
+    .actor-badge:hover {
+      background: rgba(34,211,238,.2);
+      color: var(--cyan);
+      text-decoration: none;
+      box-shadow: 0 0 8px rgba(34,211,238,.25);
+    }
 
     /* ── Loading / Error ── */
     #loadingState { text-align: center; padding: 110px 20px; color: var(--t2); }
@@ -576,12 +597,13 @@
 /* ═══════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════ */
-let allVulns      = [];
-let filteredVulns = [];
-let kevTable      = null;
-let charts        = {};
-let tlMode        = 'monthly';
-let clickFilters  = [];
+let allVulns        = [];
+let filteredVulns   = [];
+let kevTable        = null;
+let charts          = {};
+let tlMode          = 'monthly';
+let clickFilters    = [];
+let threatActorMap  = {};  /* CVE-XXXX-YYYY -> [{name, id, url}, ...] */
 
 const C_AMBER  = '#f59e0b';
 const C_ORANGE = '#f97316';
@@ -606,10 +628,23 @@ const TOOLTIP_STYLE = {
 ═══════════════════════════════════════════════════ */
 async function loadData() {
   try {
-    const resp = await fetch('data/kev_data.json');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    allVulns = data.vulnerabilities || [];
+    const [kevResp, taResp] = await Promise.all([
+      fetch('data/kev_data.json'),
+      fetch('data/threat_actors.json').catch(() => null)
+    ]);
+    if (!kevResp.ok) throw new Error('HTTP ' + kevResp.status);
+    const data = await kevResp.json();
+
+    if (taResp && taResp.ok) {
+      const taData = await taResp.json();
+      threatActorMap = taData.data || {};
+    }
+
+    allVulns = (data.vulnerabilities || []).map(v => ({
+      ...v,
+      threatActors: threatActorMap[v.cveID] || []
+    }));
+
     renderMetaBadges(data.metadata || {});
     buildYearDropdown();
     buildVendorDropdown();
@@ -953,6 +988,11 @@ function initTable() {
       },
       { title:'CWE', field:'cwes', width:170,
         formatter: cell => { const cwes=cell.getValue(); if(!cwes||!cwes.length) return '<span style="color:#334155;">—</span>'; return cwes.map(cwe=>`<a href="https://cwe.mitre.org/data/definitions/${cwe.replace('CWE-','')}.html" target="_blank" style="color:${C_BLUE};font-size:11px;margin-right:4px;font-family:'JetBrains Mono',monospace;">${cwe}</a>`).join(''); }
+      },
+      { title:'Threat Actors', field:'threatActors', minWidth:180,
+        headerTooltip: 'Known threat actors exploiting this CVE (source: MITRE ATT&CK)',
+        formatter: cell => { const a=cell.getValue(); if(!a||!a.length) return '<span style="color:#334155;">—</span>'; return a.map(x=>`<a class="actor-badge" href="${x.url}" target="_blank" title="${x.name} (${x.id})">${x.name}</a>`).join(''); },
+        sorter: (a,b) => (a||[]).length-(b||[]).length
       },
       { title:'Description', field:'shortDescription', minWidth:200, visible:false,
         formatter: cell => { const v=cell.getValue()||''; return `<span title="${v.replace(/"/g,'&quot;')}" style="font-size:11px;">${v.length>100?v.slice(0,98)+'…':v}</span>`; }
