@@ -1,0 +1,4 @@
+data/nvd_haskev_cache.json
+__pycache__/
+*.pyc
+.DS_Store
